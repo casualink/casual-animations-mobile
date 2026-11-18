@@ -1,4 +1,4 @@
-name: Build AAB for Play Store
+name: Build AAB - Rapido e Blindado
 
 on:
   push:
@@ -8,9 +8,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
+      # --- PREVENÇÃO 1: Trava tudo na versão certa ---
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
@@ -21,32 +23,52 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
+
+      # --- VELOCIDADE 1: CACHE! Não baixa tudo de novo ---
+      - name: Cache Buildozer + SDK + NDK
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer
+            ~/.cache/pip
+          key: buildozer-${{ hashFiles('buildozer.spec') }}-v1
+          restore-keys: |
+            buildozer-
 
       - name: Install deps
         run: |
           sudo apt update
-          sudo apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev wget
+          sudo apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev wget ccache
           pip install --upgrade pip==23.3.1
           pip install buildozer==1.5.0 Cython==0.29.36
+          # PREVENÇÃO: Mostra se tá tudo certo ANTES de começar
+          java -version
+          python --version
+          pip --version
 
-      - name: Fix spec - MATA O capture_logging
+      - name: Fix spec - Previne + Acelera
         run: |
-          # Apaga as linhas velhas que causavam o erro
           sed -i '/p4a.branch/d' buildozer.spec
           sed -i '/p4a.fork/d' buildozer.spec
-          # Coloca o p4a NOVO que já foi consertado
+          sed -i '/android.archs/d' buildozer.spec
           echo "p4a.fork = kivy" >> buildozer.spec
           echo "p4a.branch = develop" >> buildozer.spec
           echo "android.api = 33" >> buildozer.spec
           echo "android.minapi = 21" >> buildozer.spec
           echo "android.ndk = 25b" >> buildozer.spec
-          cat buildozer.spec | grep p4a
+          # VELOCIDADE: Só arm64, não compila 2x!
+          echo "android.archs = arm64-v8a" >> buildozer.spec
+          echo "android.allow_backup = False" >> buildozer.spec
 
       - name: Build AAB
         env:
           JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+          USE_CCACHE: '1'
+          CCACHE_DIR: /home/runner/.ccache
         run: |
-          rm -rf bin .buildozer
+          rm -rf bin
+          # NÃO apaga o .buildozer! É o cache!
           buildozer -v android release
 
       - name: Upload AAB
