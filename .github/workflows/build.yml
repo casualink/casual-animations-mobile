@@ -19,20 +19,37 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+          sudo apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev wget
           pip install --upgrade pip==23.3.1
           pip install buildozer==1.5.0 Cython==0.29.36
 
-      - name: Fix Buildozer spec to use working p4a
+      - name: Install Android SDK + build-tools + aidl
         run: |
-          # Força usar o p4a antigo que FUNCIONA, não o 3.14 quebrado
+          export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          cd /tmp
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q commandlinetools-linux-11076708_latest.zip -d $ANDROID_HOME/cmdline-tools
+          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+          ls $ANDROID_HOME/build-tools/33.0.2/aidl
+          echo "AIDl OK!"
+
+      - name: Fix Buildozer spec
+        run: |
           grep -q "p4a.branch" buildozer.spec || echo "p4a.branch = v2024.01.21" >> buildozer.spec
           grep -q "p4a.fork" buildozer.spec || echo "p4a.fork = kivy" >> buildozer.spec
-          cat buildozer.spec | grep p4a
+          grep -q "android.api" buildozer.spec || echo "android.api = 33" >> buildozer.spec
+          grep -q "android.minapi" buildozer.spec || echo "android.minapi = 21" >> buildozer.spec
 
       - name: Build AAB
+        env:
+          ANDROID_HOME: /home/runner/.buildozer/android/platform/android-sdk
+          ANDROID_SDK_ROOT: /home/runner/.buildozer/android/platform/android-sdk
         run: |
-          rm -rf .buildozer bin
+          rm -rf bin
           buildozer -v android release
 
       - name: Upload AAB
