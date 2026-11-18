@@ -29,9 +29,23 @@ jobs:
           pip install --upgrade "pip==23.3.1" "setuptools==68.2.2" wheel
           pip install "buildozer==1.5.0" "cython==0.29.36"
 
+      - name: Install Android SDK Build-Tools
+        run: |
+          export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          cd $HOME
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdtools.zip
+          unzip -q -o cmdtools.zip -d $ANDROID_HOME/cmdline-tools
+          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME --licenses
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-33" "build-tools;33.0.2" "build-tools;34.0.0"
+
       - name: Build APK
         run: |
-          export PIP_VERSION=23.3.1
+          export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          export PATH=$PATH:$ANDROID_HOME/build-tools/34.0.0:$ANDROID_HOME/platform-tools
           buildozer -v android debug
 
       - name: Upload APK
