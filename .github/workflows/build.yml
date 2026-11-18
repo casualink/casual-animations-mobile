@@ -17,55 +17,36 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Python 3.10
+      - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install deps
         run: |
           sudo apt update
           sudo apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev wget
-          sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java || true
-          echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
-          echo "PATH=/usr/lib/jvm/java-17-openjdk-amd64/bin:$PATH" >> $GITHUB_ENV
           pip install --upgrade pip==23.3.1
           pip install buildozer==1.5.0 Cython==0.29.36
 
-      - name: Install Android SDK + build-tools + aidl + FIX sdkmanager
+      - name: Fix spec - MATA O capture_logging
         run: |
-          export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
-          mkdir -p $ANDROID_HOME/cmdline-tools
-          cd /tmp
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip -q commandlinetools-linux-11076708_latest.zip -d $ANDROID_HOME/cmdline-tools
-          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
-          # --- O FIX QUE FALTAVA! Cria o atalho que o Buildozer procura ---
-          mkdir -p $ANDROID_HOME/tools/bin
-          ln -sf $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager $ANDROID_HOME/tools/bin/sdkmanager
-          ln -sf $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager $ANDROID_HOME/tools/bin/avdmanager
-          ln -sf $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer $ANDROID_HOME/tools/bin/apkanalyzer
-          ls -l $ANDROID_HOME/tools/bin/sdkmanager
-          ls $ANDROID_HOME/build-tools/33.0.2/aidl
-          echo "FIX OK!"
-
-      - name: Fix Buildozer spec
-        run: |
-          grep -q "p4a.branch" buildozer.spec || echo "p4a.branch = v2024.01.21" >> buildozer.spec
-          grep -q "p4a.fork" buildozer.spec || echo "p4a.fork = kivy" >> buildozer.spec
-          grep -q "android.api" buildozer.spec || echo "android.api = 33" >> buildozer.spec
-          grep -q "android.minapi" buildozer.spec || echo "android.minapi = 21" >> buildozer.spec
+          # Apaga as linhas velhas que causavam o erro
+          sed -i '/p4a.branch/d' buildozer.spec
+          sed -i '/p4a.fork/d' buildozer.spec
+          # Coloca o p4a NOVO que já foi consertado
+          echo "p4a.fork = kivy" >> buildozer.spec
+          echo "p4a.branch = develop" >> buildozer.spec
+          echo "android.api = 33" >> buildozer.spec
+          echo "android.minapi = 21" >> buildozer.spec
+          echo "android.ndk = 25b" >> buildozer.spec
+          cat buildozer.spec | grep p4a
 
       - name: Build AAB
         env:
-          ANDROID_HOME: /home/runner/.buildozer/android/platform/android-sdk
-          ANDROID_SDK_ROOT: /home/runner/.buildozer/android/platform/android-sdk
           JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
         run: |
-          rm -rf bin
+          rm -rf bin .buildozer
           buildozer -v android release
 
       - name: Upload AAB
