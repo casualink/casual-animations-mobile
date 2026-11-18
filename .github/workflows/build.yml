@@ -8,14 +8,33 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    container:
-      image: kivy/buildozer:stable
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+          pip install --upgrade pip==23.3.1
+          pip install buildozer==1.5.0 Cython==0.29.36
+
+      - name: Fix Buildozer spec to use working p4a
+        run: |
+          # Força usar o p4a antigo que FUNCIONA, não o 3.14 quebrado
+          grep -q "p4a.branch" buildozer.spec || echo "p4a.branch = v2024.01.21" >> buildozer.spec
+          grep -q "p4a.fork" buildozer.spec || echo "p4a.fork = kivy" >> buildozer.spec
+          cat buildozer.spec | grep p4a
+
       - name: Build AAB
         run: |
           rm -rf .buildozer bin
           buildozer -v android release
+
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
