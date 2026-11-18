@@ -23,7 +23,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
       # --- VELOCIDADE 1: CACHE! Não baixa tudo de novo ---
       - name: Cache Buildozer + SDK + NDK
