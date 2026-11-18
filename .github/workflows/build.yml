@@ -1,4 +1,4 @@
-name: Build APK
+name: Build AAB for Play Store
 
 on:
   push:
@@ -12,17 +12,12 @@ jobs:
       image: kivy/buildozer:stable
     steps:
       - uses: actions/checkout@v4
-
-      - name: Build APK with Docker Buildozer
+      - name: Build AAB
         run: |
-          # Limpa qualquer cache velho quebrado
           rm -rf .buildozer bin
-          # Usa o p4a antigo que funciona, não o 3.14 quebrado
-          echo "p4a.branch = v2024.01.21" >> buildozer.spec || true
-          buildozer -v android debug
-
-      - name: Upload APK
+          buildozer -v android release
+      - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: apk
-          path: bin/*.apk
+          name: aab-playstore
+          path: bin/*.aab
