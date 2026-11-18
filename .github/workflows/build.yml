@@ -26,16 +26,13 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev wget
-          # FORÇA o Java 17 como padrão!
           sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java || true
-          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
           echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
           echo "PATH=/usr/lib/jvm/java-17-openjdk-amd64/bin:$PATH" >> $GITHUB_ENV
-          java -version
           pip install --upgrade pip==23.3.1
           pip install buildozer==1.5.0 Cython==0.29.36
 
-      - name: Install Android SDK + build-tools + aidl
+      - name: Install Android SDK + build-tools + aidl + FIX sdkmanager
         run: |
           export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
           mkdir -p $ANDROID_HOME/cmdline-tools
@@ -46,8 +43,14 @@ jobs:
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
           yes | sdkmanager --licenses > /dev/null || true
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+          # --- O FIX QUE FALTAVA! Cria o atalho que o Buildozer procura ---
+          mkdir -p $ANDROID_HOME/tools/bin
+          ln -sf $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager $ANDROID_HOME/tools/bin/sdkmanager
+          ln -sf $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager $ANDROID_HOME/tools/bin/avdmanager
+          ln -sf $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer $ANDROID_HOME/tools/bin/apkanalyzer
+          ls -l $ANDROID_HOME/tools/bin/sdkmanager
           ls $ANDROID_HOME/build-tools/33.0.2/aidl
-          echo "AIDl OK!"
+          echo "FIX OK!"
 
       - name: Fix Buildozer spec
         run: |
